@@ -29,17 +29,27 @@ jobs:
         run: flutter pub get
 
       # 生成临时签名密钥，确保打包出的APK可以直接安装
-      - name: Generate Keystore
+      - name: Generate Keystore & Build APK
+        env:
+          KEYSTORE_PASSWORD: android
+          KEY_PASSWORD: android
+          KEY_ALIAS: upload
         run: |
-          keytool -genkey -v -keystore android/app/upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload -storepass android -keypass android -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=CN"
-          echo "storePassword=android" > android/key.properties
-          echo "keyPassword=android" >> android/key.properties
-          echo "keyAlias=upload" >> android/key.properties
+          # 1. 生成临时签名密钥
+          keytool -genkey -v -keystore android/app/upload-keystore.jks \
+            -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias upload -storepass $KEYSTORE_PASSWORD -keypass $KEY_PASSWORD \
+            -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=CN"
+          
+          # 2. 写入 key.properties (Flutter 默认模板会自动读取此文件)
+          echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
           echo "storeFile=app/upload-keystore.jks" >> android/key.properties
+          
+          # 3. 编译 Release APK
+          flutter build apk --release
 
-      # 编译 Release APK
-      - name: Build APK
-        run: flutter build apk --release
 
       # 上传编译好的 APK 到 Artifacts
       - name: Upload APK
