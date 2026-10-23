@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      # 生成临时签名密钥，确保打包出的APK可以直接安装
+      - name: Generate Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload -storepass android -keypass android -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=CN"
+          echo "storePassword=android" > android/key.properties
+          echo "keyPassword=android" >> android/key.properties
+          echo "keyAlias=upload" >> android/key.properties
+          echo "storeFile=app/upload-keystore.jks" >> android/key.properties
+
+      # 编译 Release APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 上传编译好的 APK 到 Artifacts
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: id-card-merger-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
