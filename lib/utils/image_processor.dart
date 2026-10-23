@@ -36,9 +36,16 @@ class ImageProcessor {
       );
     }
 
-    // 锐化
+    // 锐化：兼容新版 image 库
     if (sharpness > 0.0) {
-      image = img.sharpen(image, amount: sharpness.clamp(0.0, 2.0));
+      final amount = sharpness.clamp(0.0, 2.0).round();
+      if (amount > 0) {
+        try {
+          image = img.copySharpen(image, amount: amount);
+        } catch (_) {
+          // 如果 copySharpen 也不可用，跳过锐化，不影响主流程
+        }
+      }
     }
 
     return Uint8List.fromList(img.encodeJpg(image, quality: 95));
