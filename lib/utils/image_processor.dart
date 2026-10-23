@@ -24,8 +24,11 @@ class ImageProcessor {
     final contrast = params['contrast'] as double;
     final sharpness = params['sharpness'] as double;
 
-    img.Image? image = img.decodeImage(bytes);
-    if (image == null) return bytes;
+    img.Image? decoded = img.decodeImage(bytes);
+    if (decoded == null) return bytes;
+
+    // 用非可空变量承接，避免后续类型检查报错
+    img.Image image = decoded;
 
     // 调整亮度和对比度
     if (brightness != 0.0 || contrast != 1.0) {
@@ -33,20 +36,15 @@ class ImageProcessor {
         image,
         brightness: (brightness / 100).clamp(-1.0, 1.0),
         contrast: contrast.clamp(0.1, 3.0),
-      );
+      ) ?? image;
     }
 
-    // 锐化：兼容新版 image 库
-    if (sharpness > 0.0) {
-      final amount = sharpness.clamp(0.0, 2.0).round();
-      if (amount > 0) {
-        try {
-          image = img.copySharpen(image, amount: amount);
-        } catch (_) {
-          // 如果 copySharpen 也不可用，跳过锐化，不影响主流程
-        }
-      }
-    }
+    // 锐化：image 4.x 中 sharpen/copySharpen 函数已移除，暂时跳过
+    // 如需锐化功能，可添加 dependency: image_filters: ^1.2.0
+    // import 'package:image_filters/image_filters.dart' show sharpen;
+    // if (sharpness > 0.0) {
+    //   image = sharpen(image, amount: sharpness.clamp(0.0, 2.0));
+    // }
 
     return Uint8List.fromList(img.encodeJpg(image, quality: 95));
   }
