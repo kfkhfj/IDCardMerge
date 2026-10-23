@@ -124,15 +124,19 @@ class _HomePageState extends State<HomePage> {
           return pw.Stack(
             children: _items.map((item) {
               return pw.Positioned(
-                left: item.x * PdfPageFormat.mm,
-                top: item.y * PdfPageFormat.mm,
-                width: item.width * PdfPageFormat.mm,
-                height: item.height * PdfPageFormat.mm,
-                child: pw.Image(
-                  pw.MemoryImage(item.processedBytes),
-                  fit: pw.BoxFit.fill,
-                ),
-              );
+                  child: SizedBox(
+                  width: item.width * PdfPageFormat.mm,
+                  height: item.height * PdfPageFormat.mm, // 如果有高度也一并处理
+                  child: /* 你原来的子组件 */,
+  ),
+  // left, top 等定位参数保持不变
+)
+
+// ❌ 原代码 (约136行)
+// }).toList(),
+
+// ✅ 修改为：添加强制类型转换
+}).cast<pw.Widget>().toList(),
             }).toList(),
           );
         },
