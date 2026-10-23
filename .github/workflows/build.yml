@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,20 +28,36 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      # 生成临时签名密钥，确保打包出的APK可以直接安装
+      - name: Recreate Android Project
+        run: |
+          rm -rf android
+          flutter create --platforms android .
+          flutter pub get
+
       - name: Generate Keystore & Build APK
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
           KEY_ALIAS: upload
         run: |
+          # 强制确保 android/app 目录存在，防止 keytool 写入失败
+          mkdir -p android/app
+          
+          # 验证 Android 工程是否生成成功，若失败则重试
+          if [ ! -f "android/app/build.gradle" ] && [ ! -f "android/app/build.gradle.kts" ]; then
+            echo "Android project incomplete, recreating..."
+            rm -rf android
+            flutter create --platforms android .
+            mkdir -p android/app
+          fi
+          
           # 1. 生成临时签名密钥
           keytool -genkey -v -keystore android/app/upload-keystore.jks \
             -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 \
             -alias upload -storepass $KEYSTORE_PASSWORD -keypass $KEY_PASSWORD \
             -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=CN"
           
-          # 2. 写入 key.properties (Flutter 默认模板会自动读取此文件)
+          # 2. 写入 key.properties (Flutter 默认模板会自动读取)
           echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
           echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
           echo "keyAlias=$KEY_ALIAS" >> android/key.properties
@@ -50,8 +66,6 @@ jobs:
           # 3. 编译 Release APK
           flutter build apk --release
 
-
-      # 上传编译好的 APK 到 Artifacts
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
