@@ -31,7 +31,8 @@ jobs:
       - name: Recreate Android Project
         run: |
           rm -rf android
-          flutter create --platforms android .
+          # 【关键修复】显式指定合法的全小写包名，绕过目录名大写限制
+          flutter create --platforms android --project-name id_card_merge .
           flutter pub get
 
       - name: Generate Keystore & Build APK
