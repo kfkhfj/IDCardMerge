@@ -28,17 +28,30 @@ class _HomePageState extends State<HomePage> {
       sourcePath: image.path,
       aspectRatio: const CropAspectRatio(ratioX: 85.6, ratioY: 54.0),
       uiSettings: [
-        AndroidUiSettings(toolbarTitle: '裁剪身份证', toolbarColor: Colors.blue),
+        AndroidUiSettings(
+          toolbarTitle: '裁剪身份证',
+          toolbarColor: Colors.blue,
+        ),
       ],
     );
 
     if (croppedFile != null) {
       Uint8List bytes = await croppedFile.readAsBytes();
       // 初始处理
-      Uint8List processedBytes = await ImageProcessor.processImage(bytes, 0, 1.0, 0);
-      
+      Uint8List processedBytes = await ImageProcessor.processImage(
+        bytes,
+        0,
+        1.0,
+        0,
+      );
+
       setState(() {
-        _items.add(IdCardItem(originalBytes: bytes, processedBytes: processedBytes));
+        _items.add(
+          IdCardItem(
+            originalBytes: bytes,
+            processedBytes: processedBytes,
+          ),
+        );
       });
     }
   }
@@ -59,8 +72,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _applyFilters() async {
     if (_selectedItem == null) return;
-    
-    // 简单的滤镜调节弹窗
+
     double tempBrightness = _selectedItem!.brightness;
     double tempContrast = _selectedItem!.contrast;
     double tempSharpness = _selectedItem!.sharpness;
@@ -74,20 +86,44 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildSlider('亮度', tempBrightness, -100, 100, (v) => setDialogState(() => tempBrightness = v)),
-                _buildSlider('对比度', tempContrast, 0.5, 2.0, (v) => setDialogState(() => tempContrast = v)),
-                _buildSlider('锐化', tempSharpness, 0.0, 2.0, (v) => setDialogState(() => tempSharpness = v)),
+                _buildSlider(
+                  '亮度',
+                  tempBrightness,
+                  -100,
+                  100,
+                  (v) => setDialogState(() => tempBrightness = v),
+                ),
+                _buildSlider(
+                  '对比度',
+                  tempContrast,
+                  0.5,
+                  2.0,
+                  (v) => setDialogState(() => tempContrast = v),
+                ),
+                _buildSlider(
+                  '锐化',
+                  tempSharpness,
+                  0.0,
+                  2.0,
+                  (v) => setDialogState(() => tempSharpness = v),
+                ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
                 // 后台处理
                 Uint8List processed = await ImageProcessor.processImage(
-                  _selectedItem!.originalBytes, tempBrightness, tempContrast, tempSharpness
+                  _selectedItem!.originalBytes,
+                  tempBrightness,
+                  tempContrast,
+                  tempSharpness,
                 );
                 setState(() {
                   _selectedItem!.brightness = tempBrightness;
@@ -104,11 +140,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
+  Widget _buildSlider(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
     return Column(
       children: [
         Text('$label: ${value.toStringAsFixed(2)}'),
-        Slider(min: min, max: max, value: value, onChanged: onChanged),
+        Slider(
+          min: min,
+          max: max,
+          value: value,
+          onChanged: onChanged,
+        ),
       ],
     );
   }
@@ -116,7 +163,7 @@ class _HomePageState extends State<HomePage> {
   // 导出 PDF
   Future<pw.Document> _generatePdf() async {
     final pdf = pw.Document();
-    
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4, // 210 x 297 mm
@@ -124,20 +171,18 @@ class _HomePageState extends State<HomePage> {
           return pw.Stack(
             children: _items.map((item) {
               return pw.Positioned(
-                  child: SizedBox(
+                left: item.x * PdfPageFormat.mm,
+                top: item.y * PdfPageFormat.mm,
+                child: pw.SizedBox(
                   width: item.width * PdfPageFormat.mm,
-                  height: item.height * PdfPageFormat.mm, // 如果有高度也一并处理
-                  child: /* 你原来的子组件 */,
-  ),
-  // left, top 等定位参数保持不变
-)
-
-// ❌ 原代码 (约136行)
-// }).toList(),
-
-// ✅ 修改为：添加强制类型转换
-}).cast<pw.Widget>().toList(),
-            }).toList(),
+                  height: item.height * PdfPageFormat.mm,
+                  child: pw.Image(
+                    pw.MemoryImage(item.processedBytes),
+                    fit: pw.BoxFit.fill,
+                  ),
+                ),
+              );
+            }).cast<pw.Widget>().toList(),
           );
         },
       ),
@@ -153,12 +198,14 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
-            onPressed: _items.isEmpty ? null : () async {
-              final pdf = await _generatePdf();
-              await Printing.layoutPdf(
-                onLayout: (PdfPageFormat format) async => pdf.save(),
-              );
-            },
+            onPressed: _items.isEmpty
+                ? null
+                : () async {
+                    final pdf = await _generatePdf();
+                    await Printing.layoutPdf(
+                      onLayout: (PdfPageFormat format) async => pdf.save(),
+                    );
+                  },
           ),
         ],
       ),
@@ -179,11 +226,15 @@ class _HomePageState extends State<HomePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(icon: const Icon(Icons.add_photo_alternate), onPressed: _pickAndCropImage, tooltip: '添加图片'),
             IconButton(
-              icon: const Icon(Icons.tune), 
-              onPressed: _selectedItem == null ? null : _applyFilters, 
-              tooltip: '调整图像'
+              icon: const Icon(Icons.add_photo_alternate),
+              onPressed: _pickAndCropImage,
+              tooltip: '添加图片',
+            ),
+            IconButton(
+              icon: const Icon(Icons.tune),
+              onPressed: _selectedItem == null ? null : _applyFilters,
+              tooltip: '调整图像',
             ),
             if (_selectedItem != null)
               IconButton(
